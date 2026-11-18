@@ -143,6 +143,83 @@
       #map { height:390px; }
       .two-col { display:grid; grid-template-columns:1.1fr .9fr; gap:13px; align-items:start; }
     }
+
+    /* Full-screen camera + live ball tracer */
+    body.camera-open { overflow:hidden; }
+    .camera-fullscreen {
+      display:none; position:fixed; inset:0; z-index:5000; width:100%;
+      height:100vh; height:100dvh; background:#050806; color:#fff;
+      overflow:hidden; isolation:isolate;
+    }
+    .camera-fullscreen.open { display:block; }
+    .camera-fullscreen video {
+      position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+      background:#050806;
+    }
+    #trackingCanvas {
+      position:absolute; inset:0; width:100%; height:100%; z-index:2;
+      pointer-events:none;
+    }
+    #trackingCanvas.calibrating { pointer-events:auto; touch-action:manipulation; cursor:crosshair; }
+    .camera-topbar {
+      position:absolute; z-index:5; top:0; left:0; right:0;
+      padding:calc(12px + env(safe-area-inset-top)) 14px 12px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      background:linear-gradient(180deg,rgba(0,0,0,.72),rgba(0,0,0,0));
+    }
+    .camera-top-title { font-size:13px; font-weight:850; letter-spacing:.8px; }
+    .camera-top-sub { color:#d2dfd4; font-size:10px; margin-top:3px; }
+    .camera-close {
+      width:40px; height:40px; border:1px solid #ffffff55; border-radius:50%;
+      color:#fff; background:#0008; font-size:22px; display:grid; place-items:center;
+    }
+    .tracker-status {
+      border-radius:20px; padding:7px 10px; background:#ffffff20; border:1px solid #ffffff40;
+      font-size:10px; font-weight:850; letter-spacing:.5px; white-space:nowrap;
+    }
+    .tracker-status.detected { background:#174d2cdd; border-color:#8ed39c; color:#e8ffe9; }
+    .camera-bottom-panel {
+      position:absolute; z-index:5; left:0; right:0; bottom:0;
+      padding:14px 14px calc(14px + env(safe-area-inset-bottom));
+      background:linear-gradient(0deg,rgba(4,13,8,.97) 0%,rgba(4,13,8,.90) 82%,rgba(4,13,8,0) 100%);
+      max-height:54vh; overflow-y:auto;
+    }
+    .live-distance-card {
+      display:flex; justify-content:space-between; align-items:center; gap:12px;
+      padding:11px 13px; border-radius:15px; background:#c9e6a4; color:#173b2a;
+      margin-bottom:10px; box-shadow:0 5px 20px #0004;
+    }
+    .live-distance-card span { display:block; font-size:9px; font-weight:900; letter-spacing:1px; }
+    .live-distance-card strong { display:block; font-size:30px; line-height:1.05; letter-spacing:-1px; margin-top:3px; }
+    .live-distance-card small { display:block; font-size:10px; margin-top:3px; color:#385640; }
+    .live-distance-icon { font-size:25px; }
+    .tracker-control-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+    .tracker-control-row.three { grid-template-columns:1fr 1fr 1fr; }
+    .tracker-control-row .btn { min-height:42px; padding:9px 8px; font-size:11px; }
+    .tracker-field {
+      min-width:0; width:100%; border:1px solid #ffffff40; color:#fff; background:#ffffff16;
+      border-radius:11px; padding:10px; font-size:12px;
+    }
+    .tracker-field option { color:#17231b; }
+    .tracker-label { color:#d6e2d8; display:block; font-size:9px; font-weight:800; letter-spacing:.7px; margin:0 0 5px 2px; }
+    .tracker-settings { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:9px; }
+    .tracker-help { color:#d3ddd4; font-size:10px; line-height:1.45; margin:9px 2px 0; }
+    .tracker-help strong { color:#fff; }
+    .tracker-calibration {
+      color:#d9efcf; font-size:10px; min-height:14px; margin:7px 2px 0;
+    }
+    .tracker-download { display:none; color:#d9efcf; font-size:11px; font-weight:800; margin:9px 2px 0; }
+    .tracker-recording-dot {
+      display:inline-block; width:7px; height:7px; background:#ff5148; border-radius:50%;
+      margin-right:5px; box-shadow:0 0 0 4px #ff514833;
+    }
+    @media (max-height:700px) {
+      .camera-bottom-panel { max-height:48vh; padding-top:10px; }
+      .live-distance-card { padding:8px 11px; }
+      .live-distance-card strong { font-size:25px; }
+      .tracker-control-row .btn { min-height:37px; }
+    }
+
   </style>
 </head>
 <body>
@@ -151,7 +228,7 @@
       <div class="brand-mark">⛳</div>
       <div><h1>BIRDIE BUDDIES</h1><p>YOUR GAME. FOUND.</p></div>
     </div>
-    <div class="version">PROTOTYPE v1.0</div>
+    <div class="version">PROTOTYPE v2.0</div>
   </header>
 
   <main>
@@ -201,31 +278,28 @@
 
       <div class="two-col">
         <div class="card">
-          <div class="card-head"><h3>Record your shot</h3><span class="eyebrow">CAMERA</span></div>
+          <div class="card-head"><h3>Ball tracking camera</h3><span class="eyebrow">LIVE DEMO</span></div>
           <div class="camera-box">
-            <div class="recording" id="recordingBadge">● RECORDING</div>
-            <video id="cameraPreview" autoplay muted playsinline></video>
-            <div class="camera-placeholder" id="cameraPlaceholder">
-              <div class="cam-icon">📹</div>
-              <strong>Shot camera</strong>
-              <p>Start the camera to record your swing and ball flight.</p>
+            <div class="camera-placeholder">
+              <div class="cam-icon">🎯</div>
+              <strong>Full-screen ball tracker</strong>
+              <p>Track a bright practice ball with a live green tracer and calibrated distance estimate.</p>
             </div>
           </div>
           <div class="camera-actions">
-            <button class="btn btn-secondary" id="cameraButton">Open camera</button>
-            <button class="btn btn-primary" id="recordButton" disabled>● Record</button>
+            <button class="btn btn-primary" id="cameraButton">↗ Open full-screen tracker</button>
+            <button class="btn btn-outline" id="fallbackButton">Import a clip</button>
           </div>
-          <a class="clip-link" id="clipDownload" href="#" download="birdie-buddies-shot.mp4">Download recorded clip ↓</a>
+          <a class="clip-link" id="clipDownload" href="#" download="birdie-buddies-shot.mp4">Download recorded demo clip ↓</a>
           <input id="videoFallback" type="file" accept="video/*" capture="environment" hidden>
-          <button class="btn btn-outline btn-block" style="margin-top:9px" id="fallbackButton">Use iPhone camera / choose a clip</button>
-          <p class="hint">Camera recording is saved as a downloadable clip. Keep the phone steady and frame the ball if possible.</p>
+          <p class="hint">For best detection, use a bright orange or yellow ball, good lighting, and keep the camera steady. The green tracer follows the selected colour; it is a prototype, not a validated golf-ball measurement system.</p>
         </div>
 
         <div class="card">
           <div class="card-head"><h3>Log this shot</h3><span class="eyebrow">SHOT LOG</span></div>
           <p class="hint" style="margin:0 0 12px">Once you've marked the estimated landing spot on the map, save the shot to your round history.</p>
           <button class="btn btn-primary btn-block" id="logShotButton" disabled>＋ Save shot location</button>
-          <div class="notice"><strong>Prototype note:</strong> Ball location is manually marked in this version. Automatic AI ball detection is a future development feature.</div>
+          <div class="notice"><strong>Prototype note:</strong> The camera demo now detects a selected bright colour and draws a live tracer. GPS ball landing location on the map is still manually marked; this is not yet a validated automatic golf-ball tracker.</div>
         </div>
       </div>
     </section>
@@ -283,6 +357,61 @@
     <button class="tab" data-view="scoreView"><span>🏌️</span><span>SCORECARD</span></button>
     <button class="tab" data-view="historyView"><span>🗂️</span><span>HISTORY</span></button>
   </nav>
+
+
+  <div id="cameraFullscreen" class="camera-fullscreen" aria-hidden="true">
+    <video id="cameraVideo" autoplay muted playsinline></video>
+    <canvas id="trackingCanvas"></canvas>
+    <canvas id="recordCanvas" hidden></canvas>
+    <div class="camera-topbar">
+      <button class="camera-close" id="closeCameraButton" aria-label="Close camera">×</button>
+      <div style="flex:1;min-width:0">
+        <div class="camera-top-title">BIRDIE BUDDIES · BALL TRACKER</div>
+        <div class="camera-top-sub">Keep the phone steady and follow the practice ball</div>
+      </div>
+      <div class="tracker-status" id="trackerStatus">CAMERA READY</div>
+    </div>
+    <div class="camera-bottom-panel">
+      <div class="live-distance-card">
+        <div>
+          <span>ESTIMATED 2D TRAVEL</span>
+          <strong id="liveDistance">— m</strong>
+          <small id="liveDistanceYards">Calibrate to show metres and yards</small>
+        </div>
+        <div class="live-distance-icon">📍</div>
+      </div>
+      <div class="tracker-settings">
+        <div>
+          <label class="tracker-label" for="ballColorSelect">BALL COLOUR</label>
+          <select class="tracker-field" id="ballColorSelect">
+            <option value="orange" selected>Bright orange (recommended)</option>
+            <option value="yellow">Bright yellow</option>
+            <option value="green">Neon green</option>
+            <option value="white">White (less reliable)</option>
+          </select>
+        </div>
+        <div>
+          <label class="tracker-label" for="knownDistanceInput">KNOWN DISTANCE</label>
+          <input class="tracker-field" id="knownDistanceInput" type="number" min="0.1" max="100" step="0.1" value="1.0" inputmode="decimal">
+        </div>
+      </div>
+      <div class="tracker-control-row">
+        <button class="btn btn-secondary" id="calibrateButton">⌖ Calibrate scale</button>
+        <button class="btn btn-primary" id="startTrackingButton">● Start tracking & recording</button>
+      </div>
+      <div class="tracker-control-row three">
+        <button class="btn btn-outline" id="resetTrackingButton">↺ Reset path</button>
+        <button class="btn btn-outline" id="stopTrackingButton" disabled>■ Stop</button>
+        <button class="btn btn-outline" id="closeCameraDoneButton">Done</button>
+      </div>
+      <div class="tracker-calibration" id="calibrationStatus">Scale not calibrated. Set two points a known distance apart.</div>
+      <a class="tracker-download" id="cameraClipDownload" href="#" download="birdie-buddies-tracer-demo.mp4">↓ Download recorded demo clip</a>
+      <p class="tracker-help">
+        <strong>Demo tip:</strong> Choose orange or yellow, then calibrate against two marks on the same flat surface. Tap the two marks in the camera view and enter their real separation. The green line follows the largest matching colour area.
+        <br><strong>Accuracy note:</strong> Distance is an approximate 2D screen-plane estimate, not a measured 3D golf shot. Bright light and a contrasting background improve detection.
+      </p>
+    </div>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -412,61 +541,369 @@
       $("logShotButton").textContent = "✓ Shot saved";
       setTimeout(() => $("logShotButton").textContent = "＋ Save shot location", 1400);
     }
+    const tracker = {
+      running:false, raf:0, lastProcess:0, lastPoint:null, lastSeenAt:0,
+      trail:[], totalPixels:0, metresPerPixel:null, calibrating:false,
+      calibrationPoints:[], processCanvas:document.createElement("canvas"),
+      processContext:null, recordContext:null, recordStream:null,
+      lastDetection:null, frameWidth:0, frameHeight:0
+    };
+    tracker.processContext = tracker.processCanvas.getContext("2d", {willReadFrequently:true});
+
+    function setTrackerStatus(message, detected=false) {
+      const el=$("trackerStatus");
+      el.textContent=message;
+      el.classList.toggle("detected", detected);
+    }
+    function openCameraOverlay() {
+      $("cameraFullscreen").classList.add("open");
+      $("cameraFullscreen").setAttribute("aria-hidden","false");
+      document.body.classList.add("camera-open");
+      $("cameraButton").textContent="Camera open";
+    }
+    function resizeTrackerCanvases() {
+      const stage=$("cameraFullscreen");
+      const rect=stage.getBoundingClientRect();
+      const dpr=Math.min(window.devicePixelRatio||1,2);
+      const visible=$("trackingCanvas");
+      visible.width=Math.max(1,Math.round(rect.width*dpr));
+      visible.height=Math.max(1,Math.round(rect.height*dpr));
+      visible.style.width=rect.width+"px";
+      visible.style.height=rect.height+"px";
+      const vctx=visible.getContext("2d");
+      vctx.setTransform(dpr,0,0,dpr,0,0);
+      const record=$("recordCanvas");
+      record.width=Math.max(1,Math.round(rect.width*dpr));
+      record.height=Math.max(1,Math.round(rect.height*dpr));
+      tracker.recordContext=record.getContext("2d");
+      tracker.recordContext.setTransform(dpr,0,0,dpr,0,0);
+      tracker.stageWidth=rect.width;
+      tracker.stageHeight=rect.height;
+      tracker.dpr=dpr;
+    }
+    function videoCoverRect(width,height,videoWidth,videoHeight) {
+      const scale=Math.max(width/videoWidth,height/videoHeight);
+      const drawnWidth=videoWidth*scale, drawnHeight=videoHeight*scale;
+      return {x:(width-drawnWidth)/2,y:(height-drawnHeight)/2,width:drawnWidth,height:drawnHeight};
+    }
+    function drawTrackerCanvases() {
+      const video=$("cameraVideo"), visible=$("trackingCanvas");
+      const width=tracker.stageWidth||visible.clientWidth, height=tracker.stageHeight||visible.clientHeight;
+      if (!width || !height) return;
+      const vctx=visible.getContext("2d");
+      vctx.clearRect(0,0,width,height);
+      const rctx=tracker.recordContext;
+      if (rctx) {
+        rctx.clearRect(0,0,width,height);
+        if (video.readyState>=2 && video.videoWidth) {
+          const rect=videoCoverRect(width,height,video.videoWidth,video.videoHeight);
+          rctx.drawImage(video,rect.x,rect.y,rect.width,rect.height);
+        }
+      }
+      if (tracker.trail.length>1) {
+        const drawLine=(ctx)=>{
+          ctx.save();
+          ctx.lineJoin="round"; ctx.lineCap="round";
+          ctx.shadowColor="#69ff83"; ctx.shadowBlur=13;
+          ctx.strokeStyle="#48f06b"; ctx.lineWidth=5;
+          ctx.beginPath();
+          ctx.moveTo(tracker.trail[0].x,tracker.trail[0].y);
+          for (let i=1;i<tracker.trail.length;i++) ctx.lineTo(tracker.trail[i].x,tracker.trail[i].y);
+          ctx.stroke();
+          ctx.shadowBlur=0;
+          const last=tracker.trail[tracker.trail.length-1];
+          ctx.fillStyle="#d9ffe0"; ctx.strokeStyle="#22c64c"; ctx.lineWidth=3;
+          ctx.beginPath(); ctx.arc(last.x,last.y,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
+          ctx.restore();
+        };
+        drawLine(vctx);
+        if (rctx) drawLine(rctx);
+      }
+      if (tracker.calibrating && tracker.calibrationPoints.length) {
+        vctx.save(); vctx.fillStyle="#ffe66b"; vctx.strokeStyle="#15231a"; vctx.lineWidth=2;
+        tracker.calibrationPoints.forEach((p,i)=>{
+          vctx.beginPath(); vctx.arc(p.x,p.y,9,0,Math.PI*2); vctx.fill(); vctx.stroke();
+          vctx.font="bold 13px -apple-system, sans-serif"; vctx.fillStyle="#fff";
+          vctx.fillText(i===0?"1":"2",p.x+12,p.y-10); vctx.fillStyle="#ffe66b";
+        });
+        vctx.restore();
+      }
+    }
+    function mapDetectionToScreen(x,y,procWidth,procHeight) {
+      const video=$("cameraVideo");
+      const width=tracker.stageWidth, height=tracker.stageHeight;
+      const rect=videoCoverRect(width,height,video.videoWidth,video.videoHeight);
+      const sourceX=(x/procWidth)*video.videoWidth;
+      const sourceY=(y/procHeight)*video.videoHeight;
+      return {x:rect.x+sourceX*(rect.width/video.videoWidth),y:rect.y+sourceY*(rect.height/video.videoHeight)};
+    }
+    function pixelMatches(r,g,b,mode) {
+      if (mode==="orange") return r>145 && g>45 && g<195 && b<135 && r>g*1.18 && r>b*1.25;
+      if (mode==="yellow") return r>160 && g>135 && b<145 && r>b*1.22 && g>b*1.08;
+      if (mode==="green") return g>115 && g>r*1.20 && g>b*1.10 && r<175;
+      if (mode==="white") {
+        const min=Math.min(r,g,b), max=Math.max(r,g,b);
+        return min>190 && max-min<42;
+      }
+      return false;
+    }
+    function detectLargestColourBlob(imageData,width,height,mode) {
+      const data=imageData.data, total=width*height;
+      const mask=new Uint8Array(total), visited=new Uint8Array(total);
+      for (let i=0,p=0;i<total;i++,p+=4) {
+        if (pixelMatches(data[p],data[p+1],data[p+2],mode)) mask[i]=1;
+      }
+      const stack=new Int32Array(total);
+      let bestCount=0,bestX=0,bestY=0;
+      for (let i=0;i<total;i++) {
+        if (!mask[i] || visited[i]) continue;
+        let top=0,count=0,sumX=0,sumY=0;
+        stack[top++]=i; visited[i]=1;
+        while(top) {
+          const idx=stack[--top], x=idx%width, y=(idx/width)|0;
+          count++; sumX+=x; sumY+=y;
+          const neighbours=[];
+          if(x>0) neighbours.push(idx-1);
+          if(x<width-1) neighbours.push(idx+1);
+          if(y>0) neighbours.push(idx-width);
+          if(y<height-1) neighbours.push(idx+width);
+          if(x>0&&y>0) neighbours.push(idx-width-1);
+          if(x<width-1&&y>0) neighbours.push(idx-width+1);
+          if(x>0&&y<height-1) neighbours.push(idx+width-1);
+          if(x<width-1&&y<height-1) neighbours.push(idx+width+1);
+          for(const n of neighbours) if(mask[n]&&!visited[n]) {visited[n]=1;stack[top++]=n;}
+        }
+        if(count>bestCount && count>=2 && count<total*0.10) {
+          bestCount=count; bestX=sumX/count; bestY=sumY/count;
+        }
+      }
+      if(bestCount<2) return null;
+      return {x:bestX,y:bestY,area:bestCount};
+    }
+    function updateLiveDistance() {
+      if (tracker.metresPerPixel===null) {
+        $("liveDistance").textContent="— m";
+        $("liveDistanceYards").textContent="Calibrate to show an estimated distance";
+        return;
+      }
+      const metres=tracker.totalPixels*tracker.metresPerPixel;
+      const yards=metres*1.0936133;
+      $("liveDistance").textContent=metres.toFixed(1)+" m";
+      $("liveDistanceYards").textContent=yards.toFixed(1)+" yd estimated travel";
+    }
+    function processTrackerFrame(timestamp) {
+      if (!$("cameraFullscreen").classList.contains("open")) return;
+      if (timestamp-tracker.lastProcess>=75) {
+        tracker.lastProcess=timestamp;
+        const video=$("cameraVideo");
+        if (tracker.running && video.readyState>=2 && video.videoWidth) {
+          const maxWidth=320;
+          const scale=Math.min(1,maxWidth/video.videoWidth);
+          const w=Math.max(1,Math.round(video.videoWidth*scale));
+          const h=Math.max(1,Math.round(video.videoHeight*scale));
+          if (tracker.processCanvas.width!==w || tracker.processCanvas.height!==h) {
+            tracker.processCanvas.width=w; tracker.processCanvas.height=h;
+          }
+          tracker.processContext.drawImage(video,0,0,w,h);
+          try {
+            const frame=tracker.processContext.getImageData(0,0,w,h);
+            const found=detectLargestColourBlob(frame,w,h,$("ballColorSelect").value);
+            if(found) {
+              const point=mapDetectionToScreen(found.x,found.y,w,h);
+              if(tracker.lastPoint) {
+                const dx=point.x-tracker.lastPoint.x,dy=point.y-tracker.lastPoint.y;
+                const step=Math.hypot(dx,dy);
+                if(step<Math.max(tracker.stageWidth,tracker.stageHeight)*0.65) tracker.totalPixels+=step;
+              }
+              tracker.trail.push(point);
+              if(tracker.trail.length>350) tracker.trail.shift();
+              tracker.lastPoint=point;
+              tracker.lastSeenAt=timestamp;
+              tracker.lastDetection=found;
+              setTrackerStatus("BALL DETECTED",true);
+              updateLiveDistance();
+            } else if(timestamp-tracker.lastSeenAt>450) {
+              tracker.lastPoint=null;
+              setTrackerStatus("SEARCHING FOR BALL");
+            }
+          } catch(err) {
+            console.warn("Frame analysis unavailable",err);
+            setTrackerStatus("TRACKING UNAVAILABLE");
+          }
+        }
+        drawTrackerCanvases();
+      }
+      tracker.raf=requestAnimationFrame(processTrackerFrame);
+    }
+    function startTrackerAnimation() {
+      cancelAnimationFrame(tracker.raf);
+      tracker.lastProcess=0;
+      tracker.raf=requestAnimationFrame(processTrackerFrame);
+    }
+    function beginCalibration() {
+      const known=Number($("knownDistanceInput").value);
+      if(!Number.isFinite(known)||known<=0) { alert("Enter a known distance greater than zero."); return; }
+      tracker.calibrating=true;
+      tracker.calibrationPoints=[];
+      $("trackingCanvas").classList.add("calibrating");
+      $("calibrationStatus").textContent=`Tap two points exactly ${known} m apart in the camera view. Keep the phone still.`;
+      drawTrackerCanvases();
+    }
+    function handleCalibrationTap(event) {
+      if(!tracker.calibrating) return;
+      event.preventDefault();
+      const rect=$("trackingCanvas").getBoundingClientRect();
+      const point={x:event.clientX-rect.left,y:event.clientY-rect.top};
+      tracker.calibrationPoints.push(point);
+      if(tracker.calibrationPoints.length===1) {
+        $("calibrationStatus").textContent="First point set. Now tap the second point.";
+      } else {
+        const a=tracker.calibrationPoints[0],b=tracker.calibrationPoints[1];
+        const pixels=Math.hypot(b.x-a.x,b.y-a.y);
+        const known=Number($("knownDistanceInput").value);
+        if(pixels<15) {
+          $("calibrationStatus").textContent="Those points are too close. Tap Calibrate scale and try again.";
+          tracker.calibrating=false;
+          $("trackingCanvas").classList.remove("calibrating");
+          tracker.calibrationPoints=[];
+        } else {
+          tracker.metresPerPixel=known/pixels;
+          try { localStorage.setItem("bbTrackerMetresPerPixel",String(tracker.metresPerPixel)); } catch(e) {}
+          $("calibrationStatus").textContent=`Scale set: ${known.toFixed(1)} m across ${Math.round(pixels)} screen pixels. Keep the phone position fixed.`;
+          tracker.calibrating=false;
+          $("trackingCanvas").classList.remove("calibrating");
+          updateLiveDistance();
+        }
+      }
+      drawTrackerCanvases();
+    }
+    function resetTrackerPath() {
+      tracker.trail=[]; tracker.totalPixels=0; tracker.lastPoint=null; tracker.lastSeenAt=0;
+      tracker.calibrationPoints=[];
+      updateLiveDistance(); drawTrackerCanvases();
+      $("calibrationStatus").textContent=tracker.metresPerPixel===null
+        ?"Scale not calibrated. Set two points a known distance apart."
+        :"Path reset. Your calibrated scale is still saved.";
+    }
     async function openCamera() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         $("videoFallback").click();
         return;
       }
       try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720}}, audio:false});
-        const video = $("cameraPreview");
-        video.srcObject = cameraStream;
-        video.style.display = "block";
-        $("cameraPlaceholder").style.display = "none";
-        $("cameraButton").textContent = "Camera on";
-        $("cameraButton").disabled = true;
-        $("recordButton").disabled = !window.MediaRecorder;
-        if (!window.MediaRecorder) $("recordButton").textContent = "Recording unavailable";
+        cameraStream=await navigator.mediaDevices.getUserMedia({
+          video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},
+          audio:false
+        });
+        const video=$("cameraVideo");
+        video.srcObject=cameraStream;
+        openCameraOverlay();
+        await video.play().catch(()=>{});
+        resizeTrackerCanvases();
+        try {
+          const savedScale=Number(localStorage.getItem("bbTrackerMetresPerPixel"));
+          if(savedScale>0) tracker.metresPerPixel=savedScale;
+        } catch(e) {}
+        updateLiveDistance();
+        $("calibrationStatus").textContent=tracker.metresPerPixel
+          ?"Saved scale loaded. Recalibrate if the camera position or zoom changes."
+          :"Scale not calibrated. Set two points a known distance apart.";
+        tracker.running=false;
+        tracker.trail=[]; tracker.totalPixels=0; tracker.lastPoint=null;
+        setTrackerStatus("CAMERA READY");
+        $("startTrackingButton").disabled=false;
+        $("startTrackingButton").textContent="● Start tracking & recording";
+        $("stopTrackingButton").disabled=true;
+        startTrackerAnimation();
       } catch(err) {
         console.error(err);
-        alert("Camera access was blocked or unavailable. Allow camera access for Safari, or use the iPhone camera option below.");
+        alert("Camera access was blocked or unavailable. Allow camera access for Safari, then try again. You can also import a video clip.");
         $("videoFallback").click();
       }
     }
+    function stopRecording() {
+      if(recorder && recorder.state!=="inactive") recorder.stop();
+    }
     function startRecording() {
-      if (!cameraStream || !window.MediaRecorder) return;
-      chunks = [];
-      let options = undefined;
-      const types = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp8", "video/webm"];
-      for (const type of types) {
-        if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) { options={mimeType:type}; break; }
+      if(!cameraStream || !window.MediaRecorder) return false;
+      chunks=[];
+      let streamToRecord=cameraStream;
+      let composite=false;
+      const recordCanvas=$("recordCanvas");
+      if(recordCanvas.captureStream) {
+        try { tracker.recordStream=recordCanvas.captureStream(30); streamToRecord=tracker.recordStream; composite=true; } catch(e) {}
+      }
+      let options=undefined;
+      const types=["video/mp4;codecs=avc1","video/mp4","video/webm;codecs=vp8","video/webm"];
+      for(const type of types) {
+        if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {options={mimeType:type};break;}
       }
       try {
-        recorder = new MediaRecorder(cameraStream, options);
-        recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-        recorder.onstop = () => {
-          const mime = recorder.mimeType || "video/mp4";
-          const blob = new Blob(chunks, {type:mime});
-          if (clipUrl) URL.revokeObjectURL(clipUrl);
-          clipUrl = URL.createObjectURL(blob);
-          const link = $("clipDownload");
-          link.href = clipUrl;
-          link.download = mime.includes("mp4") ? "birdie-buddies-shot.mp4" : "birdie-buddies-shot.webm";
-          link.style.display = "inline-block";
-          $("recordButton").textContent = "● Record again";
-          $("recordButton").classList.remove("btn-warn");
-          $("recordingBadge").style.display = "none";
+        recorder=new MediaRecorder(streamToRecord,options);
+        recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+        recorder.onstop=()=>{
+          const mime=recorder.mimeType||"video/mp4";
+          const blob=new Blob(chunks,{type:mime});
+          if(clipUrl)URL.revokeObjectURL(clipUrl);
+          clipUrl=URL.createObjectURL(blob);
+          const filename=mime.includes("mp4")?"birdie-buddies-tracer-demo.mp4":"birdie-buddies-tracer-demo.webm";
+          [$("clipDownload"),$("cameraClipDownload")].forEach(link=>{
+            link.href=clipUrl;link.download=filename;link.style.display="inline-block";
+          });
+          $("cameraClipDownload").textContent=composite
+            ?"↓ Download recorded clip (with green tracer)"
+            :"↓ Download recorded camera clip";
+          if(tracker.recordStream) {
+            tracker.recordStream.getTracks().forEach(t=>t.stop());
+            tracker.recordStream=null;
+          }
+          setTrackerStatus("RECORDING SAVED");
         };
         recorder.start();
-        $("recordButton").textContent = "■ Stop recording";
-        $("recordButton").classList.add("btn-warn");
-        $("recordingBadge").style.display = "block";
+        return true;
       } catch(err) {
-        alert("This iPhone browser could not start video recording. Use the iPhone camera option below.");
+        console.warn("Recording unavailable",err);
+        if(tracker.recordStream) {tracker.recordStream.getTracks().forEach(t=>t.stop());tracker.recordStream=null;}
+        return false;
       }
     }
-    function stopRecording() {
-      if (recorder && recorder.state !== "inactive") recorder.stop();
+    function startTrackingAndRecording() {
+      tracker.running=true;
+      tracker.trail=[];tracker.totalPixels=0;tracker.lastPoint=null;tracker.lastSeenAt=0;
+      updateLiveDistance();
+      const recorded=startRecording();
+      $("startTrackingButton").disabled=true;
+      $("stopTrackingButton").disabled=false;
+      $("startTrackingButton").textContent=recorded?"● Recording & tracking":"● Tracking (recording unavailable)";
+      $("calibrationStatus").textContent=recorded
+        ?"Tracking started. Move the selected colour ball through the camera view."
+        :"Tracking started. This browser cannot record video, but the live tracer is active.";
+      setTrackerStatus(recorded?"RECORDING + TRACKING":"TRACKING");
+    }
+    function stopTrackingAndRecording() {
+      tracker.running=false;
+      stopRecording();
+      $("startTrackingButton").disabled=false;
+      $("startTrackingButton").textContent="● Start tracking & recording";
+      $("stopTrackingButton").disabled=true;
+      if(recorder && recorder.state==="inactive") setTrackerStatus("TRACKING STOPPED");
+      else setTrackerStatus("TRACKING STOPPED");
+      $("calibrationStatus").textContent="Tracking stopped. Reset path to run another demo.";
+      drawTrackerCanvases();
+    }
+    function closeCamera() {
+      if(tracker.running || (recorder && recorder.state!=="inactive")) stopTrackingAndRecording();
+      cancelAnimationFrame(tracker.raf);
+      if(cameraStream) cameraStream.getTracks().forEach(track=>track.stop());
+      cameraStream=null;
+      const video=$("cameraVideo");
+      video.srcObject=null;
+      $("cameraFullscreen").classList.remove("open");
+      $("cameraFullscreen").setAttribute("aria-hidden","true");
+      document.body.classList.remove("camera-open");
+      $("cameraButton").textContent="↗ Open full-screen tracker";
+      tracker.calibrating=false;
+      $("trackingCanvas").classList.remove("calibrating");
     }
     function renderScorecard() {
       const rows = data.scores.map((s,i) => {
@@ -520,9 +957,6 @@
     $("navigateButton").addEventListener("click", navigateToBall);
     $("logShotButton").addEventListener("click", logShot);
     $("cameraButton").addEventListener("click", openCamera);
-    $("recordButton").addEventListener("click", () => {
-      if (recorder && recorder.state==="recording") stopRecording(); else startRecording();
-    });
     $("fallbackButton").addEventListener("click", () => $("videoFallback").click());
     $("videoFallback").addEventListener("change", e => {
       const file=e.target.files && e.target.files[0];
@@ -530,7 +964,19 @@
       if (clipUrl) URL.revokeObjectURL(clipUrl);
       clipUrl=URL.createObjectURL(file);
       const link=$("clipDownload"); link.href=clipUrl; link.download=file.name || "birdie-buddies-shot";
-      link.style.display="inline-block"; link.textContent="Save / download selected shot clip ↓";
+      link.style.display="inline-block"; link.textContent="Download selected shot clip ↓";
+    });
+    $("closeCameraButton").addEventListener("click", closeCamera);
+    $("closeCameraDoneButton").addEventListener("click", closeCamera);
+    $("calibrateButton").addEventListener("click", beginCalibration);
+    $("trackingCanvas").addEventListener("pointerdown", handleCalibrationTap);
+    $("startTrackingButton").addEventListener("click", startTrackingAndRecording);
+    $("stopTrackingButton").addEventListener("click", stopTrackingAndRecording);
+    $("resetTrackingButton").addEventListener("click", resetTrackerPath);
+    window.addEventListener("resize", () => {
+      if($("cameraFullscreen").classList.contains("open")) {
+        resizeTrackerCanvases(); drawTrackerCanvases();
+      }
     });
     $("courseName").addEventListener("change", updateRoundDetails);
     $("holeSelect").addEventListener("change", updateRoundDetails);
@@ -546,6 +992,7 @@
     });
     $("backToTrackButton").addEventListener("click",()=>showView("trackView"));
     document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>showView(t.dataset.view)));
+    document.addEventListener("keydown", e => { if(e.key==="Escape" && $("cameraFullscreen").classList.contains("open")) closeCamera(); });
     $("courseName").value=data.courseName;
     $("holeSelect").value=String(data.hole);
     renderScorecard(); renderHistory(); initMap();
