@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#173b2a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Birdie Buddies">
+  <title>Birdie Buddies</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      --green: #173b2a;
+      --green-2: #24583d;
+      --mint: #e8f1e9;
+      --lime: #c9e6a4;
+      --ink: #17231b;
+      --muted: #6c786f;
+      --line: #e3e9e3;
+      --paper: #f5f7f3;
+      --white: #fff;
+      --orange: #e58a42;
+      --red: #c64d43;
+      --shadow: 0 8px 24px rgba(22, 46, 30, .08);
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--paper); }
+    body {
+      margin: 0; color: var(--ink); background: var(--paper);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .app-header {
+      background: var(--green); color: white; padding: calc(16px + env(safe-area-inset-top)) 18px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { display:flex; gap:11px; align-items:center; }
+    .brand-mark {
+      width:42px; height:42px; border-radius:14px; display:grid; place-items:center;
+      color:var(--green); background:var(--lime); font-size:23px;
+    }
+    .brand h1 { margin:0; font-size:18px; letter-spacing:.8px; font-weight:850; }
+    .brand p { margin:3px 0 0; font-size:11px; color:#d2e1d5; letter-spacing:.5px; }
+    .version { font-size:10px; color:#d2e1d5; border:1px solid #567461; padding:6px 9px; border-radius:20px; }
+    main { max-width:760px; margin:0 auto; padding:16px 14px 22px; }
+    .welcome { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin:3px 2px 14px; }
+    .welcome h2 { font-size:23px; margin:0; letter-spacing:-.5px; }
+    .welcome p { margin:5px 0 0; color:var(--muted); font-size:13px; line-height:1.4; }
+    .status-pill { background:#fff4e8; color:#92511d; border-radius:20px; padding:7px 10px; font-size:11px; font-weight:700; white-space:nowrap; }
+    .card {
+      background:var(--white); border:1px solid var(--line); border-radius:19px;
+      box-shadow:var(--shadow); padding:15px; margin-bottom:13px;
+    }
+    .card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+    .card h3 { margin:0; font-size:15px; letter-spacing:-.2px; }
+    .eyebrow { color:var(--muted); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; }
+    .field-row { display:flex; gap:9px; align-items:center; }
+    .field {
+      width:100%; border:1px solid var(--line); border-radius:12px; background:#fbfcfa;
+      padding:11px 12px; color:var(--ink); outline:none; min-width:0;
+    }
+    .field:focus { border-color:#78a481; box-shadow:0 0 0 3px #e7f1e8; }
+    .course-fields { display:grid; grid-template-columns:1fr 105px; gap:9px; }
+    .btn {
+      border:0; border-radius:12px; padding:12px 14px; font-weight:750; font-size:13px;
+      display:inline-flex; align-items:center; justify-content:center; gap:7px;
+      transition:transform .08s ease, opacity .15s ease;
+    }
+    .btn:active { transform:scale(.98); }
+    .btn-primary { background:var(--green); color:white; }
+    .btn-secondary { background:var(--mint); color:var(--green); }
+    .btn-outline { background:white; border:1px solid var(--line); color:var(--green); }
+    .btn-warn { background:#fff0ed; color:#a43f36; }
+    .btn:disabled { opacity:.45; cursor:not-allowed; }
+    .btn-block { width:100%; }
+    .map-wrap { position:relative; overflow:hidden; border-radius:15px; border:1px solid var(--line); }
+    #map { width:100%; height:310px; background:#e8eee5; z-index:1; }
+    .map-note {
+      position:absolute; left:10px; top:10px; z-index:500; background:rgba(255,255,255,.95);
+      border-radius:10px; padding:7px 9px; font-size:10px; font-weight:700; box-shadow:0 2px 10px #0002;
+    }
+    .map-legend { display:flex; gap:14px; flex-wrap:wrap; padding:10px 2px 0; color:var(--muted); font-size:11px; }
+    .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+    .dot-blue { background:#2878d0; } .dot-red { background:#d74d42; }
+    .distance-panel {
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      background:var(--mint); border-radius:14px; padding:12px 13px; margin-top:12px;
+    }
+    .distance-panel .label { font-size:11px; color:#4e6654; font-weight:700; }
+    .distance-panel strong { display:block; font-size:25px; color:var(--green); letter-spacing:-.7px; margin-top:2px; }
+    .distance-panel small { color:#607464; font-size:10px; }
+    .distance-icon { font-size:25px; }
+    .action-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:11px; }
+    .hint { font-size:11px; color:var(--muted); line-height:1.45; margin:10px 1px 0; }
+    .camera-box { background:#111a14; border-radius:15px; overflow:hidden; min-height:190px; display:grid; place-items:center; position:relative; }
+    .camera-box video { width:100%; max-height:300px; object-fit:cover; display:none; }
+    .camera-placeholder { text-align:center; color:#d9e5da; padding:25px 15px; }
+    .camera-placeholder .cam-icon { font-size:34px; margin-bottom:7px; }
+    .camera-placeholder p { margin:0; font-size:12px; color:#aebdb0; }
+    .recording { position:absolute; top:11px; left:11px; background:#b92f2f; color:white; border-radius:20px; padding:6px 9px; font-size:10px; font-weight:800; display:none; z-index:2; }
+    .camera-actions { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:10px; }
+    .clip-link { display:none; margin-top:10px; font-size:12px; color:var(--green); font-weight:700; }
+    .tabbar {
+      position:fixed; bottom:0; left:0; right:0; z-index:1000; display:grid; grid-template-columns:repeat(3,1fr);
+      background:rgba(255,255,255,.96); backdrop-filter:blur(12px); border-top:1px solid var(--line);
+      padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+    }
+    .tab {
+      border:0; background:transparent; color:#778279; padding:7px 4px; display:flex; flex-direction:column;
+      align-items:center; gap:4px; font-size:10px; font-weight:750;
+    }
+    .tab span:first-child { font-size:19px; }
+    .tab.active { color:var(--green); }
+    .tab.active span:last-child { background:var(--mint); border-radius:20px; padding:3px 10px; }
+    .view { display:none; } .view.active { display:block; }
+    .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:13px; }
+    .stat { background:white; border:1px solid var(--line); border-radius:15px; padding:12px 10px; }
+    .stat strong { display:block; font-size:22px; color:var(--green); }
+    .stat span { color:var(--muted); font-size:10px; font-weight:700; }
+    .score-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .score-table th { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.6px; text-align:left; padding:9px 5px; }
+    .score-table td { border-top:1px solid var(--line); padding:7px 5px; }
+    .score-input { width:54px; border:1px solid var(--line); background:#fbfcfa; border-radius:9px; padding:7px 5px; text-align:center; }
+    .score-total { font-weight:850; color:var(--green); }
+    .lost-control { display:flex; align-items:center; gap:12px; }
+    .lost-control strong { font-size:24px; min-width:24px; text-align:center; }
+    .round-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .empty { text-align:center; padding:25px 10px; color:var(--muted); font-size:12px; }
+    .shot-item { padding:12px 0; border-top:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; }
+    .shot-item:first-child { border-top:0; }
+    .shot-item strong { display:block; font-size:13px; }
+    .shot-item small { display:block; color:var(--muted); font-size:10px; margin-top:4px; }
+    .shot-distance { font-size:14px; font-weight:850; color:var(--green); white-space:nowrap; }
+    .notice { background:#fff8e9; border:1px solid #f0dfb9; color:#74551e; border-radius:13px; padding:11px 12px; font-size:11px; line-height:1.5; margin-top:12px; }
+    .footer-note { color:#89948b; font-size:10px; text-align:center; padding:8px 10px 0; line-height:1.45; }
+    @media (min-width:650px) {
+      main { padding-top:24px; }
+      #map { height:390px; }
+      .two-col { display:grid; grid-template-columns:1.1fr .9fr; gap:13px; align-items:start; }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark">⛳</div>
+      <div><h1>BIRDIE BUDDIES</h1><p>YOUR GAME. FOUND.</p></div>
+    </div>
+    <div class="version">PROTOTYPE v1.0</div>
+  </header>
+
+  <main>
+    <section class="welcome">
+      <div>
+        <h2>Let's find your ball.</h2>
+        <p>Your golf companion for tracking shots and finding the landing area.</p>
+      </div>
+      <div class="status-pill" id="gpsStatus">GPS OFF</div>
+    </section>
+
+    <section id="trackView" class="view active">
+      <div class="card">
+        <div class="card-head"><h3>Round details</h3><span class="eyebrow">SET UP</span></div>
+        <div class="course-fields">
+          <input id="courseName" class="field" type="text" maxlength="45" placeholder="Golf course name" value="My golf round">
+          <select id="holeSelect" class="field" aria-label="Current hole">
+            <option value="1">Hole 1</option><option value="2">Hole 2</option><option value="3">Hole 3</option><option value="4">Hole 4</option><option value="5">Hole 5</option><option value="6">Hole 6</option>
+            <option value="7">Hole 7</option><option value="8">Hole 8</option><option value="9">Hole 9</option><option value="10">Hole 10</option><option value="11">Hole 11</option><option value="12">Hole 12</option><option value="13">Hole 13</option><option value="14">Hole 14</option><option value="15">Hole 15</option><option value="16">Hole 16</option><option value="17">Hole 17</option><option value="18">Hole 18</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Ball locator map</h3>
+          <span class="eyebrow">LIVE GPS</span>
+        </div>
+        <div class="map-wrap">
+          <div class="map-note" id="mapNote">Tap the map to mark your ball</div>
+          <div id="map" aria-label="Golf course map"></div>
+        </div>
+        <div class="map-legend">
+          <span><i class="dot dot-blue"></i>Your iPhone</span>
+          <span><i class="dot dot-red"></i>Estimated ball location</span>
+        </div>
+        <div class="distance-panel">
+          <div><span class="label">DISTANCE TO YOUR BALL</span><strong id="distanceValue">— yd</strong><small id="distanceSub">Enable GPS and mark a landing spot</small></div>
+          <div class="distance-icon">📍</div>
+        </div>
+        <div class="action-grid">
+          <button class="btn btn-primary" id="gpsButton">◎ Enable GPS</button>
+          <button class="btn btn-secondary" id="navigateButton" disabled>↗ Navigate to ball</button>
+        </div>
+        <p class="hint">After your shot, tap the map where you think the ball landed. Your iPhone's GPS shows your location; it does not independently track the ball.</p>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><h3>Record your shot</h3><span class="eyebrow">CAMERA</span></div>
+          <div class="camera-box">
+            <div class="recording" id="recordingBadge">● RECORDING</div>
+            <video id="cameraPreview" autoplay muted playsinline></video>
+            <div class="camera-placeholder" id="cameraPlaceholder">
+              <div class="cam-icon">📹</div>
+              <strong>Shot camera</strong>
+              <p>Start the camera to record your swing and ball flight.</p>
+            </div>
+          </div>
+          <div class="camera-actions">
+            <button class="btn btn-secondary" id="cameraButton">Open camera</button>
+            <button class="btn btn-primary" id="recordButton" disabled>● Record</button>
+          </div>
+          <a class="clip-link" id="clipDownload" href="#" download="birdie-buddies-shot.mp4">Download recorded clip ↓</a>
+          <input id="videoFallback" type="file" accept="video/*" capture="environment" hidden>
+          <button class="btn btn-outline btn-block" style="margin-top:9px" id="fallbackButton">Use iPhone camera / choose a clip</button>
+          <p class="hint">Camera recording is saved as a downloadable clip. Keep the phone steady and frame the ball if possible.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Log this shot</h3><span class="eyebrow">SHOT LOG</span></div>
+          <p class="hint" style="margin:0 0 12px">Once you've marked the estimated landing spot on the map, save the shot to your round history.</p>
+          <button class="btn btn-primary btn-block" id="logShotButton" disabled>＋ Save shot location</button>
+          <div class="notice"><strong>Prototype note:</strong> Ball location is manually marked in this version. Automatic AI ball detection is a future development feature.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="scoreView" class="view">
+      <div class="welcome"><div><h2>Your round.</h2><p>Keep your score and lost-ball count in one place.</p></div></div>
+      <div class="stats-grid">
+        <div class="stat"><strong id="totalStrokes">72</strong><span>TOTAL STROKES</span></div>
+        <div class="stat"><strong id="toPar">E</strong><span>TO PAR</span></div>
+        <div class="stat"><strong id="lostBallStat">0</strong><span>LOST BALLS</span></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>18-hole scorecard</h3><span class="eyebrow" id="scoreCourseName">MY ROUND</span></div>
+        <div style="overflow-x:auto">
+          <table class="score-table">
+            <thead><tr><th>Hole</th><th>Par</th><th>Strokes</th><th>+/−</th></tr></thead>
+            <tbody id="scoreRows"></tbody>
+            <tfoot><tr><td class="score-total">TOTAL</td><td class="score-total" id="parTotal">72</td><td class="score-total" id="strokeTotal">72</td><td class="score-total" id="scoreDiff">E</td></tr></tfoot>
+          </table>
+        </div>
+        <p class="hint">Scores start at par (4) for each hole. Change the strokes after you finish each hole.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Lost balls</h3><span class="eyebrow">ROUND TRACKER</span></div>
+        <div class="lost-control">
+          <button class="btn btn-outline" id="minusLost" aria-label="Remove lost ball">−</button>
+          <strong id="lostBallCount">0</strong>
+          <button class="btn btn-secondary" id="plusLost">＋ Lost ball</button>
+        </div>
+        <p class="hint">This is a simple tracking counter; update your hole score separately to reflect any penalty strokes.</p>
+      </div>
+      <div class="card">
+        <div class="round-actions">
+          <button class="btn btn-outline" id="resetRoundButton">Reset round</button>
+          <button class="btn btn-primary" id="backToTrackButton">Back to tracker</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="historyView" class="view">
+      <div class="welcome"><div><h2>Shot history.</h2><p>Review the locations you've saved during this round.</p></div></div>
+      <div class="card">
+        <div class="card-head"><h3>Saved shots</h3><span class="eyebrow" id="shotCountLabel">0 SHOTS</span></div>
+        <div id="shotHistory"><div class="empty">No shots saved yet. Mark a landing spot on the map and save your first shot.</div></div>
+      </div>
+      <div class="card">
+        <button class="btn btn-outline btn-block" id="clearHistoryButton">Clear shot history</button>
+      </div>
+    </section>
+    <div class="footer-note">Birdie Buddies is an independent student prototype. Location estimates and distances are for demonstration and should not be relied on for official play.</div>
+  </main>
+
+  <nav class="tabbar" aria-label="Main navigation">
+    <button class="tab active" data-view="trackView"><span>📍</span><span>TRACK</span></button>
+    <button class="tab" data-view="scoreView"><span>🏌️</span><span>SCORECARD</span></button>
+    <button class="tab" data-view="historyView"><span>🗂️</span><span>HISTORY</span></button>
+  </nav>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+    const STORAGE_KEY = "birdieBuddiesPrototypeV1";
+    const defaultScores = Array.from({length:18}, () => ({par:4, strokes:4}));
+    let data = { courseName:"My golf round", hole:1, scores:defaultScores, lostBalls:0, shots:[] };
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      if (saved) data = {...data, ...saved};
+    } catch(e) {}
+    let currentPosition = null;
+    let ballPosition = null;
+    let gpsWatch = null;
+    let map = null, playerMarker = null, ballMarker = null, routeLine = null;
+    let cameraStream = null, recorder = null, chunks = [], clipUrl = null;
+
+    function save() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+    }
+    function setStatus(text, good=false) {
+      $("gpsStatus").textContent = text;
+      $("gpsStatus").style.background = good ? "#e6f3e7" : "#fff4e8";
+      $("gpsStatus").style.color = good ? "#24583d" : "#92511d";
+    }
+    function initMap() {
+      if (!window.L) {
+        $("mapNote").textContent = "Map needs an internet connection";
+        return;
+      }
+      map = L.map("map", {zoomControl:false}).setView([49.8951, -97.1384], 14);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+      L.control.zoom({position:"bottomright"}).addTo(map);
+      map.on("click", (e) => {
+        ballPosition = {lat:e.latlng.lat, lng:e.latlng.lng};
+        updateBallMarker();
+        updateDistance();
+        $("logShotButton").disabled = false;
+        $("mapNote").textContent = "Landing spot marked";
+      });
+      setTimeout(() => map.invalidateSize(), 250);
+    }
+    function updatePlayerMarker() {
+      if (!map || !currentPosition) return;
+      const latlng = [currentPosition.lat, currentPosition.lng];
+      if (!playerMarker) {
+        playerMarker = L.circleMarker(latlng, {radius:9, color:"#fff", weight:3, fillColor:"#2878d0", fillOpacity:1}).addTo(map).bindPopup("Your iPhone");
+      } else playerMarker.setLatLng(latlng);
+    }
+    function updateBallMarker() {
+      if (!map || !ballPosition) return;
+      const latlng = [ballPosition.lat, ballPosition.lng];
+      if (!ballMarker) {
+        ballMarker = L.marker(latlng, {icon:L.divIcon({className:"", html:'<div style="font-size:27px;filter:drop-shadow(0 2px 2px #0005)">📍</div>', iconSize:[28,32], iconAnchor:[14,29]})}).addTo(map).bindPopup("Estimated ball location");
+      } else ballMarker.setLatLng(latlng);
+      if (currentPosition) {
+        if (routeLine) routeLine.setLatLngs([[currentPosition.lat,currentPosition.lng],[ballPosition.lat,ballPosition.lng]]);
+        else routeLine = L.polyline([[currentPosition.lat,currentPosition.lng],[ballPosition.lat,ballPosition.lng]], {color:"#d74d42", weight:3, dashArray:"7 7"}).addTo(map);
+      }
+    }
+    function metersBetween(a,b) {
+      const R=6371000, rad=x=>x*Math.PI/180;
+      const dLat=rad(b.lat-a.lat), dLon=rad(b.lng-a.lng);
+      const x=Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
+      return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+    }
+    function updateDistance() {
+      if (!currentPosition || !ballPosition) {
+        $("distanceValue").textContent = "— yd";
+        $("distanceSub").textContent = !currentPosition ? "Enable GPS and mark a landing spot" : "Tap the map to mark your ball";
+        $("navigateButton").disabled = true;
+        return;
+      }
+      const yards = metersBetween(currentPosition, ballPosition) * 1.0936133;
+      $("distanceValue").textContent = Math.round(yards).toLocaleString() + " yd";
+      $("distanceSub").textContent = "Straight-line estimate • GPS accuracy varies";
+      $("navigateButton").disabled = false;
+      updateBallMarker();
+    }
+    function enableGPS() {
+      if (!navigator.geolocation) {
+        alert("Location services are not available in this browser.");
+        return;
+      }
+      $("gpsButton").textContent = "Locating…";
+      navigator.geolocation.getCurrentPosition(pos => {
+        currentPosition = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+        updatePlayerMarker();
+        if (map && !ballPosition) map.setView([currentPosition.lat,currentPosition.lng], 17);
+        else if (map) map.panTo([currentPosition.lat,currentPosition.lng]);
+        setStatus("GPS CONNECTED", true);
+        $("gpsButton").textContent = "◎ Refresh location";
+        updateDistance();
+        if (gpsWatch === null) {
+          gpsWatch = navigator.geolocation.watchPosition(p => {
+            currentPosition = {lat:p.coords.latitude, lng:p.coords.longitude};
+            updatePlayerMarker(); updateDistance();
+          }, err => {
+            console.warn(err);
+          }, {enableHighAccuracy:true, maximumAge:3000, timeout:15000});
+        }
+      }, err => {
+        $("gpsButton").textContent = "◎ Enable GPS";
+        setStatus("GPS UNAVAILABLE");
+        let message = "Could not get your location. Check iPhone Location Services and Safari permissions.";
+        if (err.code === 1) message = "Location permission was denied. In iPhone Settings, allow location access for Safari, then try again.";
+        alert(message);
+      }, {enableHighAccuracy:true, maximumAge:0, timeout:15000});
+    }
+    function navigateToBall() {
+      if (!ballPosition) return;
+      const url = `https://maps.apple.com/?daddr=${ballPosition.lat},${ballPosition.lng}&dirflg=w`;
+      window.open(url, "_blank");
+    }
+    function logShot() {
+      if (!ballPosition) return;
+      const distance = currentPosition ? metersBetween(currentPosition, ballPosition)*1.0936133 : null;
+      data.shots.unshift({
+        id:Date.now(), hole:Number(data.hole), date:new Date().toISOString(),
+        ball:{...ballPosition}, player:currentPosition ? {...currentPosition} : null,
+        distanceYards:distance
+      });
+      save(); renderHistory();
+      $("logShotButton").textContent = "✓ Shot saved";
+      setTimeout(() => $("logShotButton").textContent = "＋ Save shot location", 1400);
+    }
+    async function openCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        $("videoFallback").click();
+        return;
+      }
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720}}, audio:false});
+        const video = $("cameraPreview");
+        video.srcObject = cameraStream;
+        video.style.display = "block";
+        $("cameraPlaceholder").style.display = "none";
+        $("cameraButton").textContent = "Camera on";
+        $("cameraButton").disabled = true;
+        $("recordButton").disabled = !window.MediaRecorder;
+        if (!window.MediaRecorder) $("recordButton").textContent = "Recording unavailable";
+      } catch(err) {
+        console.error(err);
+        alert("Camera access was blocked or unavailable. Allow camera access for Safari, or use the iPhone camera option below.");
+        $("videoFallback").click();
+      }
+    }
+    function startRecording() {
+      if (!cameraStream || !window.MediaRecorder) return;
+      chunks = [];
+      let options = undefined;
+      const types = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp8", "video/webm"];
+      for (const type of types) {
+        if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) { options={mimeType:type}; break; }
+      }
+      try {
+        recorder = new MediaRecorder(cameraStream, options);
+        recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+        recorder.onstop = () => {
+          const mime = recorder.mimeType || "video/mp4";
+          const blob = new Blob(chunks, {type:mime});
+          if (clipUrl) URL.revokeObjectURL(clipUrl);
+          clipUrl = URL.createObjectURL(blob);
+          const link = $("clipDownload");
+          link.href = clipUrl;
+          link.download = mime.includes("mp4") ? "birdie-buddies-shot.mp4" : "birdie-buddies-shot.webm";
+          link.style.display = "inline-block";
+          $("recordButton").textContent = "● Record again";
+          $("recordButton").classList.remove("btn-warn");
+          $("recordingBadge").style.display = "none";
+        };
+        recorder.start();
+        $("recordButton").textContent = "■ Stop recording";
+        $("recordButton").classList.add("btn-warn");
+        $("recordingBadge").style.display = "block";
+      } catch(err) {
+        alert("This iPhone browser could not start video recording. Use the iPhone camera option below.");
+      }
+    }
+    function stopRecording() {
+      if (recorder && recorder.state !== "inactive") recorder.stop();
+    }
+    function renderScorecard() {
+      const rows = data.scores.map((s,i) => {
+        const diff = Number(s.strokes)-Number(s.par);
+        const diffText = diff===0 ? "E" : diff>0 ? "+"+diff : String(diff);
+        return `<tr><td>${i+1}</td><td><input class="score-input" type="number" min="3" max="6" inputmode="numeric" data-hole="${i}" data-kind="par" value="${s.par}"></td><td><input class="score-input" type="number" min="1" max="20" inputmode="numeric" data-hole="${i}" data-kind="strokes" value="${s.strokes}"></td><td>${diffText}</td></tr>`;
+      }).join("");
+      $("scoreRows").innerHTML = rows;
+      const par = data.scores.reduce((a,s)=>a+Number(s.par||0),0);
+      const strokes = data.scores.reduce((a,s)=>a+Number(s.strokes||0),0);
+      const diff=strokes-par;
+      const diffText=diff===0?"E":diff>0?"+"+diff:String(diff);
+      $("parTotal").textContent=par; $("strokeTotal").textContent=strokes; $("scoreDiff").textContent=diffText;
+      $("totalStrokes").textContent=strokes; $("toPar").textContent=diffText;
+      $("lostBallStat").textContent=data.lostBalls; $("lostBallCount").textContent=data.lostBalls;
+      $("scoreCourseName").textContent=(data.courseName||"MY ROUND").toUpperCase();
+      document.querySelectorAll(".score-input").forEach(input => input.addEventListener("change", e => {
+        const i=Number(e.target.dataset.hole), kind=e.target.dataset.kind;
+        let value=Number(e.target.value);
+        if (!Number.isFinite(value) || value<1) value=kind==="par"?4:1;
+        data.scores[i][kind]=value; save(); renderScorecard();
+      }));
+    }
+    function renderHistory() {
+      $("shotCountLabel").textContent = `${data.shots.length} SHOT${data.shots.length===1?"":"S"}`;
+      if (!data.shots.length) {
+        $("shotHistory").innerHTML = '<div class="empty">No shots saved yet. Mark a landing spot on the map and save your first shot.</div>';
+        return;
+      }
+      $("shotHistory").innerHTML = data.shots.map(s => {
+        const date = new Date(s.date).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+        const distance = s.distanceYards===null ? "—" : Math.round(s.distanceYards)+" yd";
+        return `<div class="shot-item"><div><strong>Hole ${s.hole} · Landing spot saved</strong><small>${date}</small><small>${s.ball.lat.toFixed(5)}, ${s.ball.lng.toFixed(5)}</small></div><div class="shot-distance">${distance}</div></div>`;
+      }).join("");
+    }
+    function showView(viewId) {
+      document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===viewId));
+      document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.view===viewId));
+      if (viewId==="scoreView") renderScorecard();
+      if (viewId==="historyView") renderHistory();
+      if (viewId==="trackView" && map) setTimeout(()=>map.invalidateSize(),180);
+      window.scrollTo({top:0,behavior:"smooth"});
+    }
+    function updateRoundDetails() {
+      data.courseName=$("courseName").value.trim() || "My golf round";
+      data.hole=Number($("holeSelect").value);
+      save();
+    }
+
+    $("gpsButton").addEventListener("click", enableGPS);
+    $("navigateButton").addEventListener("click", navigateToBall);
+    $("logShotButton").addEventListener("click", logShot);
+    $("cameraButton").addEventListener("click", openCamera);
+    $("recordButton").addEventListener("click", () => {
+      if (recorder && recorder.state==="recording") stopRecording(); else startRecording();
+    });
+    $("fallbackButton").addEventListener("click", () => $("videoFallback").click());
+    $("videoFallback").addEventListener("change", e => {
+      const file=e.target.files && e.target.files[0];
+      if (!file) return;
+      if (clipUrl) URL.revokeObjectURL(clipUrl);
+      clipUrl=URL.createObjectURL(file);
+      const link=$("clipDownload"); link.href=clipUrl; link.download=file.name || "birdie-buddies-shot";
+      link.style.display="inline-block"; link.textContent="Save / download selected shot clip ↓";
+    });
+    $("courseName").addEventListener("change", updateRoundDetails);
+    $("holeSelect").addEventListener("change", updateRoundDetails);
+    $("plusLost").addEventListener("click",()=>{data.lostBalls++;save();renderScorecard();});
+    $("minusLost").addEventListener("click",()=>{data.lostBalls=Math.max(0,data.lostBalls-1);save();renderScorecard();});
+    $("resetRoundButton").addEventListener("click",()=>{
+      if (!confirm("Reset this round's score, lost-ball count, and shot history?")) return;
+      data.scores=Array.from({length:18},()=>({par:4,strokes:4})); data.lostBalls=0; data.shots=[]; save(); renderScorecard(); renderHistory();
+    });
+    $("clearHistoryButton").addEventListener("click",()=>{
+      if (!confirm("Clear all saved shot locations?")) return;
+      data.shots=[]; save(); renderHistory();
+    });
+    $("backToTrackButton").addEventListener("click",()=>showView("trackView"));
+    document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>showView(t.dataset.view)));
+    $("courseName").value=data.courseName;
+    $("holeSelect").value=String(data.hole);
+    renderScorecard(); renderHistory(); initMap();
+
+    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+      window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
+    }
+  })();
+  </script>
+</body>
+</html>
